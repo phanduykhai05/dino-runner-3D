@@ -114,6 +114,24 @@ class SoundManager {
       console.warn('Audio play error:', e);
     }
   }
+
+  playTrainHorn() {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      for (const frequency of [370, 440, 554]) {
+        const osc = this.ctx.createOscillator(), gain = this.ctx.createGain();
+        osc.type = 'triangle'; osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(.001, now);
+        gain.gain.linearRampToValueAtTime(.045, now + .08);
+        gain.gain.exponentialRampToValueAtTime(.001, now + .85);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + .9);
+      }
+    } catch (error) { console.warn('Train horn audio error:', error); }
+  }
 }
 
 export const sound = new SoundManager();

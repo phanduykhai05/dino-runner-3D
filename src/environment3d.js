@@ -8,6 +8,7 @@ import { createFlyingBird } from './bird3d.js';
 import { createCloudMaterial } from './cloud3d.js';
 import { Sky3D } from './sky3d.js';
 import { PuddleField } from './puddles3d.js';
+import { RailwayField } from './railway3d.js';
 import { DAY_CYCLE_SECONDS } from '../shared/day-cycle.js';
 import { LANE_WIDTH, laneX } from '../shared/race.js';
 import { SOIL_TILE_SIZE, GROUND_START, createSoilTextures, createRoadEdge, createWornPathMask, RockField } from './terrain3d.js';
@@ -46,6 +47,7 @@ export class Environment3D {
     this.initPebbles();
     this.puddles = new PuddleField(this.scene, this.groundLength, this.soilTextures.soil);
     this.puddles.setRoad(this.laneCount, this.groundWidth);
+    this.railway = new RailwayField(this.scene, this.soilTextures.soil);
     this.initClouds();
     this.initSkyBirds();
     this.initMoonAndStars();
@@ -168,6 +170,7 @@ export class Environment3D {
     }
     this.rockField?.setWidth(this.groundWidth);
     this.puddles?.setRoad(count, this.groundWidth);
+    this.railway?.setLaneCount(count);
     if (this.rockField) this.pebbles = this.rockField.stones;
     this.dirLight.shadow.camera.left = -Math.max(16, this.groundWidth / 2 + 8);
     this.dirLight.shadow.camera.right = Math.max(16, this.groundWidth / 2 + 8);
@@ -238,6 +241,8 @@ export class Environment3D {
   }
 
   setTimeOfDay(seconds, camera) {
+    this.skyTime = seconds;
+    this.railway.update(this.travelDistance, seconds);
     const state = this.sky.update(seconds, camera);
     const { daylight, warmth } = state, c = this.skyColors;
     this.isNight = daylight < .2;
@@ -283,6 +288,7 @@ export class Environment3D {
     }
     this.rockField.update(moveZ);
     this.puddles.update(this.travelDistance);
+    this.railway.update(this.travelDistance, this.skyTime);
 
     // Scroll clouds slowly
     const cloudSpeed = moveZ * 0.12;

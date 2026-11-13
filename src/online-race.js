@@ -3,7 +3,7 @@ import { Dino3D } from './dino3d.js';
 import { Obstacle3D } from './obstacles3d.js';
 import { RoomClient } from './room-client.js';
 import { OnlineUI } from './online-ui.js';
-import { LANE_COLORS, laneX } from '../shared/race.js';
+import { LANE_COLORS, laneX, TRAIN_SPEED } from '../shared/race.js';
 import { sound } from './audio.js';
 
 export class OnlineRace {
@@ -50,6 +50,8 @@ export class OnlineRace {
       for (const actor of this.actors.values()) actor.reset();
       this.watchId = localId;
       this.anchor = 0;
+      game.lastTrainHorn = null;
+      game.environment.railway.setSeed(room.courseSeed);
     }
     for (const player of room.players) {
       let actor = this.actors.get(player.id);
@@ -192,26 +194,32 @@ export class OnlineRace {
         + (ghost ? .3 * (player.homeLane + 1) : 0), z);
     }
     const desired = new Set();
+    let approachingTrain;
+    const trainAge = moving ? Math.max(-.09, Math.min(.25,
+      (performance.now() - this.client.receivedAt) / 1000
+      + (this.watchId === this.client.session.id ? this.client.rtt / 2000 : -.09))) : 0;
     for (const descriptor of room.obstacles) {
-      const z = descriptor.at - this.anchor;
-      if (z < -16 || z > 200) continue;
+      const train = descriptor.type === 'TRAIN';
+      const z = descriptor.at - (train ? TRAIN_SPEED * trainAge : 0) - this.anchor;
+      if (train && z > -18 && (!approachingTrain || z < approachingTrain.z)) approachingTrain = { ...descriptor, z };
+      if (z < (train ? -24 : -16) || z > (train ? 260 : 200)) continue;
       {
         const key = String(descriptor.id);
         desired.add(key);
         let obstacle = this.obstacles.get(key);
         if (!obstacle) {
-          obstacle = new Obstacle3D(descriptor.type, z, descriptor.count, descriptor.height, undefined, descriptor.variant);
-          obstacle.mesh.position.x = laneX(descriptor.lane ?? 2);
+          obstacle = new Obstacle3D(descriptor.type, z, descriptor.count, descriptor.height, undefined, descriptor.variant, train ? descriptor : null);
+          if (!train) obstacle.mesh.position.x = laneX(descriptor.lane ?? 2);
           this.game.scene.add(obstacle.mesh);
           this.obstacles.set(key, obstacle);
         }
-        obstacle.z = z;
-        obstacle.update(0, dt);
+        obstacle.updateAt(z, moving ? dt : 0, descriptor.at - (train ? TRAIN_SPEED * trainAge : 0));
       }
     }
     for (const [key, obstacle] of this.obstacles) if (!desired.has(key)) {
       obstacle.dispose(); obstacle.mesh.removeFromParent(); this.obstacles.delete(key);
     }
+    this.game.updateTrainWarning(moving ? approachingTrain : null, `${room.code}:${approachingTrain?.id}`);
     this.updateCamera(dt);
     this.ui.frame();
   }
@@ -223,6 +231,7 @@ export class OnlineRace {
   leaveScene() {
     if (!this.active) return;
     this.active = false;
+    this.game.updateTrainWarning(null);
     this.clearObstacles();
     for (const actor of this.actors.values()) if (actor !== this.game.dino) actor.dispose();
     this.actors.clear();

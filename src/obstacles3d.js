@@ -7,24 +7,29 @@ import * as THREE from 'three';
 import { createFlyingBird } from './bird3d.js';
 import { createCactus } from './cactus3d.js';
 import { createContainer } from './container3d.js';
-import { obstacleBounds, laneX } from '../shared/race.js';
+import { createTrain } from './train3d.js';
+import { obstacleBounds, laneX, TRAIN_SPEED, trainCarPoses, trainHitsBox } from '../shared/race.js';
 import { obstacleRow, rowGapAt } from '../shared/course.js';
+import { railSection, trainForSection } from '../shared/railway.js';
 
 export const Obstacle3DType = {
   CACTUS_SMALL: 'CACTUS_SMALL',
   CACTUS_LARGE: 'CACTUS_LARGE',
   PTERODACTYL: 'PTERODACTYL',
   CONTAINER: 'CONTAINER',
+  TRAIN: 'TRAIN',
 };
 
 export class Obstacle3D {
-  constructor(type, z, count = 1, birdHeightLevel = 0, color = 0x2e3035, variant = 0) {
+  constructor(type, z, count = 1, birdHeightLevel = 0, color = 0x2e3035, variant = 0, route = null) {
     this.type = type;
     this.z = z;
     this.count = count;
     this.birdHeightLevel = birdHeightLevel;
     this.color = color;
     this.variant = variant;
+    this.route = route;
+    this.at = route?.at ?? z;
 
     this.mesh = new THREE.Group();
     this.mesh.position.z = z;
@@ -34,6 +39,7 @@ export class Obstacle3D {
     this.box = new THREE.Box3();
 
     this.build();
+    this.train?.update(0, this.route, this.at);
     this.updateBox();
   }
 
@@ -47,6 +53,9 @@ export class Obstacle3D {
     } else if (this.type === Obstacle3DType.CONTAINER) {
       this.container = createContainer(this.variant);
       this.mesh.add(this.container);
+    } else if (this.type === Obstacle3DType.TRAIN) {
+      this.train = createTrain();
+      this.mesh.add(this.train.group);
     }
   }
 
@@ -68,7 +77,7 @@ export class Obstacle3D {
   }
 
   dispose() {
-    if (this.container) return; // Cached container geometry, materials and textures are shared.
+    if (this.container || this.train) return; // Cached geometry, materials and textures are shared.
     if (this.flightBird) this.flightBird.userData.flight.dispose();
     else {
       const materials = new Set();
@@ -86,17 +95,35 @@ export class Obstacle3D {
   }
 
   update(speed, dt) {
-    this.z -= speed * dt * 14;
+    this.updateAt(this.z - (speed * 14 + (this.train ? TRAIN_SPEED : 0)) * dt, dt,
+      this.at - (this.train ? TRAIN_SPEED * dt : 0));
+  }
+
+  updateAt(z, dt, at = this.at) {
+    this.z = z;
+    this.at = at;
     this.mesh.position.z = this.z;
 
     if (this.type === Obstacle3DType.PTERODACTYL) {
       this.flightBird.userData.flight.update(dt);
     }
+    this.train?.update(dt, this.route, this.at);
 
     this.updateBox();
   }
 
   updateBox() {
+    if (this.train && this.route) {
+      this.box.makeEmpty();
+      for (const car of trainCarPoses({ ...this.route, at: this.at })) {
+        const hx = car.halfX * Math.cos(car.yaw) + car.halfZ * Math.abs(Math.sin(car.yaw));
+        const hz = car.halfZ * Math.cos(car.yaw) + car.halfX * Math.abs(Math.sin(car.yaw));
+        const z = this.z + car.z - this.at;
+        this.box.expandByPoint(new THREE.Vector3(car.x - hx, .08, z - hz));
+        this.box.expandByPoint(new THREE.Vector3(car.x + hx, 5.36, z + hz));
+      }
+      return;
+    }
     if (this.type === Obstacle3DType.PTERODACTYL) {
       // Wing tips are visual: flapping must not change whether a dodge succeeds.
       this.box.setFromCenterAndSize(this.mesh.position, new THREE.Vector3(0.6, 0.42, 1.2));
@@ -107,6 +134,12 @@ export class Obstacle3D {
     this.box.min.set(this.mesh.position.x - bounds.halfX, bounds.minY, this.z - bounds.halfZ);
     this.box.max.set(this.mesh.position.x + bounds.halfX, bounds.maxY, this.z + bounds.halfZ);
   }
+
+  intersectsBox(box) {
+    return this.train && this.route
+      ? trainHitsBox({ ...this.route, at: this.at }, box, this.at - this.z)
+      : this.box.intersectsBox(box);
+  }
 }
 
 export class Obstacle3DManager {
@@ -115,6 +148,8 @@ export class Obstacle3DManager {
     this.color = color;
     this.obstacles = [];
     this.nextSpawnDistance = 35;
+    this.nextTrainSection = 0;
+    this.courseSeed = 0;
   }
 
   setColor(color) {
@@ -124,13 +159,15 @@ export class Obstacle3DManager {
     }
   }
 
-  reset() {
+  reset(courseSeed = 0) {
+    this.courseSeed = courseSeed;
     for (const obs of this.obstacles) {
       obs.dispose();
       this.scene.remove(obs.mesh);
     }
     this.obstacles = [];
     this.nextSpawnDistance = 45;
+    this.nextTrainSection = 0;
   }
 
   update(speed, distance, dt) {
@@ -138,11 +175,20 @@ export class Obstacle3DManager {
       const obs = this.obstacles[i];
       obs.update(speed, dt);
 
-      if (obs.z < -12) {
+      if (obs.z < -Math.max(12, obstacleBounds(obs).halfZ + 4)) {
         obs.dispose();
         this.scene.remove(obs.mesh);
         this.obstacles.splice(i, 1);
       }
+    }
+
+    while (railSection(this.nextTrainSection, 3).triggerAt <= distance) {
+      const index = this.nextTrainSection++;
+      if (railSection(index, 3).end < distance) continue;
+      const descriptor = trainForSection(index, 3, this.courseSeed);
+      const obs = new Obstacle3D(descriptor.type, descriptor.at - distance, 1, 0, undefined, 0, descriptor);
+      obs.lane = descriptor.lane; obs.section = index; obs.updateBox();
+      this.scene.add(obs.mesh); this.obstacles.push(obs);
     }
 
     this.nextSpawnDistance -= speed * dt * 14;
@@ -165,6 +211,6 @@ export class Obstacle3DManager {
   }
 
   checkCollision(dino3D) {
-    return this.obstacles.some(obs => obs.box.intersectsBox(dino3D.box));
+    return this.obstacles.some(obs => obs.intersectsBox(dino3D.box));
   }
 }

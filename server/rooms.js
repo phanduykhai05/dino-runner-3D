@@ -1,6 +1,7 @@
 import { randomBytes, randomInt } from 'node:crypto';
-import { MAX_PLAYERS, SKINS, RESPAWN_DELAY_MS, RESPAWN_SHIELD_MS, laneX, applyInput, stepPlayer, hitsObstacle, rankPlayers, speedAt } from '../shared/race.js';
+import { MAX_PLAYERS, SKINS, RESPAWN_DELAY_MS, RESPAWN_SHIELD_MS, TRAIN_SPEED, laneX, applyInput, stepPlayer, hitsObstacle, rankPlayers, speedAt } from '../shared/race.js';
 import { obstacleRow, rowGapAt } from '../shared/course.js';
+import { railSection, trainForSection } from '../shared/railway.js';
 
 const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const nameOf = value => typeof value === 'string' ? value.normalize('NFC').replace(/[\p{C}]/gu, '').trim().slice(0, 20) : '';
@@ -64,7 +65,7 @@ export class RoomHub {
         if (this.rooms.size >= this.maxRooms) return this.error(socket, 'Máy chủ đang đầy. Vui lòng thử lại sau.');
         let code;
         do { code = Array.from({ length: 6 }, () => alphabet[randomInt(alphabet.length)]).join(''); } while (this.rooms.has(code));
-        room = { code, hostId: null, phase: 'lobby', round: 0, players: new Map(), distance: 0, elapsed: 0, obstacles: [], nextObstacle: 48, obstacleId: 0 };
+        room = { code, hostId: null, phase: 'lobby', round: 0, players: new Map(), distance: 0, elapsed: 0, obstacles: [], nextObstacle: 48, obstacleId: 0, nextTrainSection: 0, courseSeed: randomInt(0x100000000) };
         this.rooms.set(code, room);
       } else {
         const code = typeof message.code === 'string' ? message.code.trim().toUpperCase() : '';
@@ -133,6 +134,8 @@ export class RoomHub {
       room.obstacles = [];
       room.nextObstacle = 48;
       room.obstacleId = 0;
+      room.nextTrainSection = 0;
+      room.courseSeed = randomInt(0x100000000);
       for (const p of connected) Object.assign(p, { alive: true, participating: true, ready: false, distance: 0, scoreDistance: 0, respawnAt: 0, invulnerableUntil: 0, y: 0, vy: 0, duck: false, duckHeld: false, lane: p.homeLane, x: laneX(p.homeLane) });
       this.fillCourse(room);
       this.broadcast(room);
@@ -152,6 +155,10 @@ export class RoomHub {
       }
       room.nextObstacle += rowGapAt(room.nextObstacle);
     }
+    while (railSection(room.nextTrainSection).triggerAt <= room.distance) {
+      const index = room.nextTrainSection++;
+      if (railSection(index).end >= room.distance) room.obstacles.push({ ...trainForSection(index, 5, room.courseSeed), id: ++room.obstacleId });
+    }
     room.obstacles = room.obstacles.filter(o => o.at > room.distance - 30);
   }
 
@@ -164,7 +171,7 @@ export class RoomHub {
     }));
     return { type: 'snapshot', code: room.code, hostId: room.hostId, phase: room.phase, round: room.round,
       now: this.now(), startAt: room.startAt || 0, elapsed: room.elapsed, distance: room.distance,
-      speed: speedAt(room.distance), players: rankPlayers(players), obstacles: room.obstacles };
+      courseSeed: room.courseSeed, speed: speedAt(room.distance), players: rankPlayers(players), obstacles: room.obstacles };
   }
 
   broadcast(room) {
@@ -231,6 +238,7 @@ export class RoomHub {
         room.elapsed += 1 / 60;
         room.distance += speed * 14 / 60;
         this.fillCourse(room);
+        for (const obstacle of room.obstacles) if (obstacle.type === 'TRAIN') obstacle.at -= TRAIN_SPEED / 60;
         for (const p of room.players.values()) {
           if (!p.alive || !p.participating) continue;
           stepPlayer(p, 1 / 60, speed);

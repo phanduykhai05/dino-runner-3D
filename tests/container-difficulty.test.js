@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { CONTAINER_SIZE, INITIAL_SPEED, MAX_SPEED, speedAt, obstacleBounds, hitsObstacle, applyInput, stepPlayer, laneX } from '../shared/race.js';
 import { obstacleRow, rowGapAt } from '../shared/course.js';
+import { inRailZone } from '../shared/railway.js';
 import { Obstacle3D } from '../src/obstacles3d.js';
 import { RoomHub } from '../server/rooms.js';
 import { EventEmitter } from 'node:events';
@@ -47,17 +48,19 @@ test('container variants have finite geometry, consistent dimensions and safe sh
   }
 });
 
-test('speed rises steadily to a capped 2.75x pace in about ninety seconds', () => {
-  let distance = 0, previous = INITIAL_SPEED;
+test('harder pace reaches the capped 2.75x speed in under seventy seconds', () => {
+  let distance = 0, previous = INITIAL_SPEED, cappedAt;
   const milestones = [];
   for (let frame = 0; frame < 120 * 60; frame++) {
     const speed = speedAt(distance);
     assert.ok(speed >= previous && speed <= MAX_SPEED);
     distance += speed * 14 / 60; previous = speed;
+    if (speed === MAX_SPEED && cappedAt === undefined) cappedAt = frame / 60;
     if ((frame + 1) % 1800 === 0) milestones.push(speed);
   }
-  assert.ok(milestones[0] > 2.2 && milestones[0] < 2.3);
-  assert.ok(milestones[1] > 3.1 && milestones[1] < 3.2);
+  assert.ok(milestones[0] > 2.4 && milestones[0] < 2.6);
+  assert.ok(milestones[1] > 3.8 && milestones[1] < 3.9);
+  assert.ok(cappedAt > 65 && cappedAt < 70);
   assert.ok(milestones[2] > 4.3);
   assert.equal(milestones[3], MAX_SPEED);
   assert.equal(speedAt(-1), INITIAL_SPEED);
@@ -70,7 +73,8 @@ test('harder rows retain a clear lane and enough clearance to cross after a long
     const row = obstacleRow(at, count, random);
     assert.ok(row.length < count);
     assert.equal(new Set(row.map(o => o.lane)).size, row.length);
-    if (at >= 3500) assert.equal(row.length, count - 1);
+    if (inRailZone(at)) assert.equal(row.length, 0);
+    else if (at >= 3500) assert.equal(row.length, count - 1);
     const gap = rowGapAt(at, random);
     const secondsClear = (gap - CONTAINER_SIZE.depth - 3.2) / (speedAt(at) * 14);
     assert.ok(secondsClear > (count - 1) * .22 + .4 + .2, 'space for lane changes, reaction and network delay');

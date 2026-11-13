@@ -135,6 +135,20 @@ export class Game3D {
     if (label && label.textContent !== text) label.textContent = text;
   }
 
+  updateTrainWarning(train, key) {
+    const warning = document.getElementById('train-warning');
+    warning.hidden = !train || train.z > 360 || train.z < -18;
+    if (warning.hidden) return;
+    const route = train.route ?? train;
+    const turn = Number.isInteger(route.targetLane) ? ` · Rẽ ${route.turn < 0 ? 'trái' : 'phải'} ${route.turn < 0 ? '↖' : '↗'} · Làn ${route.lane + 1} → ${route.targetLane + 1}` : ` · Làn ${route.lane + 1}`;
+    const text = `🚆 Tàu lao tới${turn} · Đổi làn để né`;
+    if (warning.textContent !== text) warning.textContent = text;
+    if (train.z < 240 && train.z > 30 && this.lastTrainHorn !== key) {
+      this.lastTrainHorn = key;
+      sound.playTrainHorn();
+    }
+  }
+
   switchCameraView() {
     if (this.online?.active) { this.online.cycleCamera(); return; }
     this.currentViewIndex = (this.currentViewIndex + 1) % this.cameraViews.length;
@@ -147,6 +161,8 @@ export class Game3D {
     Object.assign(this.runner, { alive: true, lane: 2, x: 0 });
     this.runElapsed = 0;
     this.runDistance = 0;
+    this.lastTrainHorn = null;
+    this.updateTrainWarning(null);
     this.dino.mesh.position.x = 0;
     this.scene.fog.near = 55; this.scene.fog.far = 185;
     this.camera.far = 260; this.camera.updateProjectionMatrix();
@@ -154,7 +170,9 @@ export class Game3D {
     this.applyCameraView(this.currentViewIndex);
     this.currentSpeed = this.initialSpeed;
     this.dino.reset();
-    this.obstacleManager.reset();
+    const courseSeed = crypto.getRandomValues(new Uint32Array(1))[0];
+    this.obstacleManager.reset(courseSeed);
+    this.environment.railway.setSeed(courseSeed);
     this.scoreManager.reset();
 
     if (this.hud.gameOverBox) this.hud.gameOverBox.style.display = 'none';
@@ -191,6 +209,7 @@ export class Game3D {
   }
 
   moveLane(direction) {
+    if (sound.enabled) sound.init();
     if (this.online?.active) { this.online.move(direction); return; }
     if (this.state === Game3DState.IDLE || this.state === Game3DState.GAMEOVER) this.start();
     if (this.state === Game3DState.RUNNING) applyInput(this.runner, { move: direction });
@@ -324,6 +343,7 @@ export class Game3D {
 
   update(dt) {
     if (this.online?.active) { this.online.update(dt); return; }
+    if (this.state !== Game3DState.RUNNING) this.updateTrainWarning(null);
     if (this.state === Game3DState.IDLE) {
       this.dino.state = Dino3DState.IDLE;
       this.dino.update(0, dt);
@@ -345,6 +365,8 @@ export class Game3D {
     this.followCamera(dt);
     this.environment.update(this.currentSpeed, dt, this.runDistance);
     this.obstacleManager.update(this.currentSpeed, this.runDistance, dt);
+    const train = this.obstacleManager.obstacles.find(obstacle => obstacle.type === 'TRAIN' && obstacle.z > -18);
+    this.updateTrainWarning(train, `solo:${train?.section}`);
     this.scoreManager.update(this.currentSpeed * 2.5, dt * 60);
 
     // Collision check

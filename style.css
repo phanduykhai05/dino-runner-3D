@@ -20,9 +20,16 @@
   display: block; margin-top: 14px; font: 13px/1.8 'Segoe UI', system-ui, sans-serif;
   color: #344a3c; padding: 8px 12px; background: #ffffffcf; border-radius: 8px;
 }
+.train-warning {
+  position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+  padding: 9px 13px; border: 1px solid #c38735; border-radius: 8px;
+  background: #fff0c9ed; color: #71391f;
+  font: 700 13px/1.5 'Segoe UI', system-ui, sans-serif;
+}
 @media (max-width: 700px) {
   .sky-status { top: 96px; left: 12px; transform: none; font-size: 11px; }
   .runner-instructions { font-size: 11px; }
+  .train-warning { top: 136px; left: 12px; transform: none; max-width: calc(100% - 24px); font-size: 12px; }
   body #idle-prompt { top: 42%; }
 }
 

@@ -5,11 +5,44 @@ export const LANE_WIDTH = 6.4;
 export const INITIAL_SPEED = 1.6;
 export const MAX_SPEED = 4.4;
 export const CONTAINER_SIZE = Object.freeze({ width: 4, height: 5.2, depth: 11 });
+export const TRAIN_SIZE = Object.freeze({ width: 4, height: 5.4, depth: 32 });
+export const TRAIN_SPEED = 26;
+export const TRAIN_CARS = Object.freeze([
+  { offset: -10.6, length: 10.8 }, { offset: .25, length: 9.9 }, { offset: 10.9, length: 10.2 },
+]);
 export const SKINS = ['dark_rex', 'green_rex', 'triceratops', 'brachiosaurus', 'stegosaurus'];
 export const LANE_COLORS = ['#467a54', '#427e9f', '#b58132', '#865b8b', '#ae6653'];
 export const laneX = lane => (2 - lane) * LANE_WIDTH;
-export const speedAt = distance => Math.min(MAX_SPEED, INITIAL_SPEED + Math.max(0, distance) * .0008);
+export const speedAt = distance => Math.min(MAX_SPEED, INITIAL_SPEED + Math.max(0, distance) * .00105);
 export const scoreAt = distance => Math.floor(distance * 0.267857);
+
+export function trainPoseAt(route, at) {
+  const sourceX = laneX(route.lane ?? 2), targetX = laneX(route.targetLane ?? route.lane ?? 2);
+  const span = route.curveEnd - route.curveStart;
+  const t = span > 0 ? Math.max(0, Math.min(1, (at - route.curveStart) / span)) : 1;
+  const x = targetX + (sourceX - targetX) * t * t * (3 - 2 * t);
+  const slope = span > 0 ? (sourceX - targetX) * 6 * t * (1 - t) / span : 0;
+  return { x, z: at, yaw: Math.atan(slope) };
+}
+
+export function trainCarPoses(train) {
+  return TRAIN_CARS.map(car => ({ ...trainPoseAt(train, train.at + car.offset),
+    halfX: TRAIN_SIZE.width / 2 - .04, halfZ: car.length / 2 - .04 }));
+}
+
+export function trainHitsBox(train, box, anchor = 0) {
+  if (box.min.y > TRAIN_SIZE.height - .04 || box.max.y < .08) return false;
+  const px = (box.min.x + box.max.x) / 2, pz = (box.min.z + box.max.z) / 2;
+  const hx = (box.max.x - box.min.x) / 2, hz = (box.max.z - box.min.z) / 2;
+  return trainCarPoses(train).some(car => {
+    const dx = px - car.x, dz = pz - (car.z - anchor), c = Math.cos(car.yaw), s = Math.sin(car.yaw), absS = Math.abs(s);
+    // Test both boxes' axes so curved cars do not block the empty space beside them.
+    return Math.abs(dx) <= hx + car.halfX * c + car.halfZ * absS
+      && Math.abs(dz) <= hz + car.halfX * absS + car.halfZ * c
+      && Math.abs(dx * c - dz * s) <= car.halfX + hx * c + hz * absS
+      && Math.abs(dx * s + dz * c) <= car.halfZ + hx * absS + hz * c;
+  });
+}
 
 export function applyInput(player, input) {
   if (!player.alive) return;
@@ -55,6 +88,10 @@ export function playerBounds(player) {
 }
 
 export function obstacleBounds(obstacle) {
+  if (obstacle.type === 'TRAIN') return {
+    minY: .08, maxY: TRAIN_SIZE.height - .04,
+    halfX: TRAIN_SIZE.width / 2 - .06, halfZ: TRAIN_SIZE.depth / 2 - .06,
+  };
   if (obstacle.type === 'CONTAINER') return {
     minY: .04, maxY: CONTAINER_SIZE.height - .04,
     halfX: CONTAINER_SIZE.width / 2 - .04, halfZ: CONTAINER_SIZE.depth / 2 - .04,
@@ -71,6 +108,11 @@ export function obstacleBounds(obstacle) {
 
 export function hitsObstacle(player, obstacle) {
   const p = playerBounds(player), o = obstacleBounds(obstacle);
+  if (obstacle.type === 'TRAIN') {
+    const x = player.x ?? laneX(player.lane ?? 2), halfX = player.duck ? .55 : .5;
+    return trainHitsBox(obstacle, { min: { x: x - halfX, y: p.minY, z: player.distance + p.minZ },
+      max: { x: x + halfX, y: p.maxY, z: player.distance + p.maxZ } });
+  }
   if (Number.isInteger(obstacle.lane)) {
     const x = player.x ?? laneX(player.lane ?? 2);
     if (Math.abs(x - laneX(obstacle.lane)) > o.halfX + (player.duck ? .55 : .5)) return false;

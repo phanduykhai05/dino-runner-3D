@@ -63,11 +63,20 @@ khác hiện mờ khi trùng vị trí để vẫn nhìn rõ nhân vật của m
 Container thép cao chặn từng làn, có gân thép, cửa khóa, sơn cũ và sọc cảnh báo.
 Phải đổi làn để né container; nhảy hoặc cúi không vượt qua được. Container xuất
 hiện từ những hàng đầu và nhiều hơn khi độ khó tăng. Tốc độ tăng đều từ 1× đến
-tối đa 2,75× trong khoảng 90 giây chạy liên tục; mức tốc độ hiện cạnh tên buổi trời.
+tối đa 2,75× trong khoảng 69 giây chạy liên tục; mức tốc độ hiện cạnh tên buổi trời.
 Các hàng chướng ngại vật cũng dày dần theo thời gian. Mỗi hàng vẫn chừa ít nhất
 một làn trống, và khoảng cách giữa các hàng tính theo tốc độ cùng chiều dài
 container để còn đủ thời gian phản ứng và đổi làn. Chơi đơn và online dùng chung
 luật tăng tốc, sinh chướng ngại vật và va chạm container.
+
+Định kỳ có đoạn đường ray với tàu chạy ngược chiều lao tới. Ray rẽ ngẫu nhiên
+sang trái hoặc phải một làn, đầu máy và từng toa xoay theo khúc cua. Tàu gồm đầu máy,
+hai toa, bánh xe quay và đèn trước; cột tín hiệu nháy đỏ, còi và thông báo báo
+hướng rẽ và hai làn tàu đi qua. Phải đổi làn để né, nhảy hoặc cúi không vượt qua được. Trong đoạn
+này luôn chừa làn ngoài đường rẽ để né. Tàu xuất hiện thường hơn, chạy nhanh hơn
+và khoảng trống trước/sau đoạn tàu ngắn hơn phiên bản ray thẳng. Bản thân đường ray không gây chết.
+Máy chủ chọn hướng rẽ chung cho cả phòng và điều khiển vị trí tàu; va chạm tàu vẫn áp dụng hồi sinh
+3 giây và giữ điểm của chế độ online.
 
 Bầu trời chuyển mượt theo chu kỳ 4 phút: **bình minh → ban ngày → hoàng hôn → đêm
 → bình minh**. Mặt trời chạy theo vòng cung, ánh sáng và bóng đổ thay đổi, bầu trời
@@ -158,7 +167,8 @@ npm run preview
 ```
 
 Kiểm tra hoạt cảnh chim, hình học và va chạm xương rồng, phòng 5 người, quyền chủ phòng, đếm ngược,
-hồi sinh sau 3 giây, giữ điểm lúc chờ, xếp hạng, kết nối lại, lề đường và cuộn sỏi đá:
+hồi sinh sau 3 giây, giữ điểm lúc chờ, xếp hạng, kết nối lại, lề đường, cuộn sỏi đá,
+đường ray trái/phải, chuyển động từng toa theo khúc cua và va chạm tàu:
 
 ```sh
 npm test
