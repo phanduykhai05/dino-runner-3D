@@ -1,0 +1,20 @@
+{
+  "name": "dino-runner",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server/index.js --dev",
+    "build": "vite build",
+    "preview": "node server/index.js",
+    "start": "node server/index.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  },
+  "dependencies": {
+    "three": "^0.187.0",
+    "ws": "^8.23.0"
+  }
+}

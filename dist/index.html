@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>3D Chrome Dino Runner</title>
+    <!-- Pixel Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+    <script type="module" crossorigin src="/assets/index-CLqRveyc.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Dy1mpUpy.css">
+  </head>
+  <body>
+    <!-- 3D WebGL Canvas (Full Screen) -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Retro Pixel HUD Overlay -->
+    <div id="hud-container">
+      <div id="sky-status" class="sky-status" role="status" aria-live="polite">☀ Bình minh</div>
+      <section id="online-panel" class="online-panel" aria-label="Phòng chơi online">
+        <header class="online-header">
+          <div><h1 id="online-title">Chơi cùng bạn</h1><p>5 đường chạy, cùng một cuộc đua</p></div>
+          <button id="online-toggle" type="button" aria-expanded="true" aria-label="Thu gọn hoặc mở bảng phòng">☰</button>
+        </header>
+        <div class="online-content">
+          <p id="connection-status" data-status="connecting" role="status">Đang tải game…</p>
+          <form id="room-entry">
+            <label for="player-name">Tên của bạn</label>
+            <input id="player-name" name="name" maxlength="20" autocomplete="nickname" placeholder="Nhập tên người chơi" required>
+            <button id="create-room" class="online-primary" type="button">Tạo phòng mới</button>
+            <label for="room-code-input">Hoặc vào bằng mã phòng</label>
+            <div class="join-row"><input id="room-code-input" name="code" maxlength="6" minlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Mã 6 ký tự" required><button id="join-room" type="submit">Vào phòng</button></div>
+          </form>
+          <div id="room-member" hidden>
+            <div class="room-code-row"><strong id="room-code"></strong><button id="copy-room" type="button">Sao chép mã</button></div>
+            <p id="room-host"></p>
+            <div class="room-actions"><button id="ready-button" class="online-primary" type="button">Sẵn sàng</button><button id="start-race" type="button">Bắt đầu</button><button id="leave-room" class="leave-button" type="button">Rời phòng</button></div>
+          </div>
+          <p id="online-message" aria-live="polite">Tạo phòng rồi gửi mã cho tối đa 4 người bạn. Hoặc thu gọn bảng để chơi đơn.</p>
+        </div>
+      </section>
+      <aside id="live-board" class="live-board" hidden aria-label="Bảng xếp hạng phòng">
+        <header><h2 id="board-heading">Người chơi trong phòng</h2><span id="room-capacity">0/5 người</span></header>
+        <div id="rank-rows" class="rank-rows"></div>
+        <p class="board-hint">Chọn một người để xem góc nhìn của họ</p>
+      </aside>
+      <div id="race-countdown" class="race-countdown" hidden aria-live="assertive"></div>
+      <div id="race-result" class="race-result" hidden aria-live="polite"></div>
+      <div id="watching" class="watching" hidden><span id="watching-name"></span><button id="back-to-me" type="button">Về tôi</button></div>
+      <!-- High Score & Current Score (Top Right) -->
+      <div id="score-display">00000</div>
+
+      <!-- Idle Start Prompt -->
+      <div id="idle-prompt" class="center-prompt">
+        <p>BẤM SPACE HOẶC CHẠM ĐỂ CHƠI</p>
+        <small class="runner-instructions">← → / A D: đổi làn · ↑ / Space: nhảy · ↓: cúi<br>Điện thoại: vuốt trái/phải, lên để nhảy, xuống để cúi</small>
+      </div>
+
+      <!-- Game Over Overlay -->
+      <div id="game-over-box" class="center-prompt" style="display: none;">
+        <h2 class="game-over-text">G A M E &nbsp; O V E R</h2>
+        <button id="btn-restart" class="restart-button" title="Chơi lại">
+          <svg viewBox="0 0 36 32" width="40" height="36">
+            <path fill="none" stroke="currentColor" stroke-width="3.6" d="M18 5.5 A10.5 10.5 0 1 0 28.5 16" />
+            <polygon fill="currentColor" points="25,2 29.5,10 20.5,9.5" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Paused Notification -->
+      <div id="paused-box" class="center-prompt" style="display: none;">
+        <p>PAUSED</p>
+      </div>
+
+      <!-- Quick Camera Switch Button (Bottom Left) -->
+      <button id="btn-camera-view" class="hud-tool-btn" title="Đổi góc nhìn (Phím V)">
+        🎥 Góc nhìn (V)
+      </button>
+      <a class="model-credits" href="/credits.html" target="_blank" rel="noopener">Nguồn mô hình 3D</a>
+
+      <!-- Dinosaur Character Selector (Bottom Center) -->
+      <div id="dino-selector" class="dino-selector-panel">
+        <span class="selector-label">CHỌN KHỦNG LONG:</span>
+        <div class="dino-btn-group">
+          <button class="dino-select-btn active" data-dino="dark_rex" title="T-Rex Da Sọc">
+            🦖 <span class="dino-name">T-Rex Sọc</span>
+          </button>
+          <button class="dino-select-btn" data-dino="green_rex" title="T-Rex Rừng">
+            🟢 <span class="dino-name">Rex Rừng</span>
+          </button>
+          <button class="dino-select-btn" data-dino="triceratops" title="Khủng Long Ba Sừng">
+            🦏 <span class="dino-name">Ba Sừng</span>
+          </button>
+          <button class="dino-select-btn" data-dino="brachiosaurus" title="Khủng Long Cổ Dài">
+            🦕 <span class="dino-name">Cổ Dài</span>
+          </button>
+          <button class="dino-select-btn" data-dino="stegosaurus" title="Khủng Long Gai Tấm">
+            🟣 <span class="dino-name">Gai Tấm</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Application Bootstrap -->
+  </body>
+</html>

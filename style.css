@@ -1,0 +1,373 @@
+/* -------------------------------------------------------------
+   3D Dino Runner - Retro Pixel Art & WebGL Stylesheet
+   ------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[hidden] { display: none !important; }
+
+.sky-status {
+  position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+  padding: 7px 12px; border-radius: 8px; color: #33463e; background: #ffffffc9;
+  font: 600 13px 'Segoe UI', system-ui, sans-serif; white-space: nowrap;
+}
+.runner-instructions {
+  display: block; margin-top: 14px; font: 13px/1.8 'Segoe UI', system-ui, sans-serif;
+  color: #344a3c; padding: 8px 12px; background: #ffffffcf; border-radius: 8px;
+}
+@media (max-width: 700px) {
+  .sky-status { top: 96px; left: 12px; transform: none; font-size: 11px; }
+  .runner-instructions { font-size: 11px; }
+  body #idle-prompt { top: 42%; }
+}
+
+.online-panel, .live-board, .watching, .race-result {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #24392f;
+}
+.online-panel, .live-board {
+  position: absolute;
+  top: 20px;
+  border: 1px solid #cbd5cd;
+  background: rgba(250, 252, 249, .96);
+  border-radius: 14px;
+  padding: 16px;
+  pointer-events: auto;
+  z-index: 30;
+}
+.online-panel { left: 20px; width: 310px; }
+.online-header { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.online-header h1 { font-size: 21px; font-weight: 700; line-height: 1.25; }
+.online-header p { font-size: 12px; color: #63756a; margin-top: 4px; }
+.online-panel button, .watching button {
+  font: 600 13px 'Segoe UI', system-ui, sans-serif;
+  color: #304b3c;
+  padding: 10px 12px;
+  border: 1px solid #becdc1;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.online-panel button:disabled, .dino-select-btn:disabled { opacity: .5; cursor: default; }
+.online-panel button:not(:disabled):hover { background: #e6eee7; }
+.online-panel button.online-primary { color: #fff; background: #3c7050; border-color: #3c7050; }
+.online-panel button.online-primary:not(:disabled):hover { background: #2d5a3e; }
+.online-panel button.is-ready { background: #e0efdf; color: #2b5737; }
+#online-toggle { padding: 6px 10px; font-size: 18px; }
+.collapsed .online-content { display: none; }
+.online-content { margin-top: 14px; }
+#connection-status { font-size: 12px; margin-bottom: 12px; color: #7d6740; }
+#connection-status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: currentColor; }
+#connection-status[data-status='connected'] { color: #397447; }
+#connection-status[data-status='disconnected'], #connection-status[data-status='reconnecting'] { color: #9c4b3b; }
+#room-entry { display: grid; gap: 8px; }
+#room-entry label { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.online-panel input {
+  width: 100%; min-width: 0; padding: 11px 12px; font: 15px 'Segoe UI', system-ui, sans-serif;
+  border: 1px solid #bdcbc0; border-radius: 8px; color: #24392f; background: #fff;
+  user-select: text;
+}
+.online-panel input:focus-visible, .online-panel button:focus-visible, .rank-row:focus-visible, .watching button:focus-visible { outline: 3px solid #75a783; outline-offset: 2px; }
+.join-row { display: flex; gap: 8px; }
+.join-row button { flex-shrink: 0; }
+#room-code-input { text-transform: uppercase; letter-spacing: 2px; }
+.room-code-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 8px 0; }
+#room-code { font: 700 26px ui-monospace, monospace; letter-spacing: 3px; }
+#room-host { font-size: 13px; color: #5b7061; margin: 10px 0 14px; }
+.room-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.room-actions button { flex: 1; white-space: nowrap; }
+.online-panel .leave-button { flex: 0; background: transparent; border-color: transparent; color: #896052; }
+#online-message { font-size: 12px; line-height: 1.6; color: #617367; margin-top: 12px; }
+#online-message.error { color: #a3392e; }
+.live-board { right: 20px; width: 292px; }
+.live-board header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 12px; }
+.live-board h2 { font-size: 15px; font-weight: 700; }
+#room-capacity { font-size: 11px; color: #6d7d72; white-space: nowrap; }
+.rank-rows { display: grid; gap: 5px; }
+.rank-row {
+  display: flex; align-items: center; gap: 9px; padding: 10px 8px; min-height: 57px;
+  border: 1px solid transparent; border-left: 3px solid var(--lane-color, #c5d0c7);
+  background: #eef2ec; border-radius: 6px; color: #283d30; width: 100%; text-align: left; cursor: pointer;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+.rank-row.is-local { background: #e3eddf; }
+.rank-row.is-watched { border-top-color: #82a18b; border-right-color: #82a18b; border-bottom-color: #82a18b; }
+.rank-row.is-out { opacity: .65; }
+.rank-row:hover { background: #e0e9de; }
+.place { font-size: 19px; font-weight: 750; min-width: 20px; color: var(--lane-color); }
+.runner-info { flex: 1; min-width: 0; }
+.runner-info strong { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.runner-info small { display: block; font-size: 10px; margin-top: 3px; color: #67766c; }
+.runner-score { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.empty-slot { color: #839084; font-size: 11px; cursor: default; background: transparent; border: 1px dashed #d0d9cf; }
+.board-hint { font-size: 11px; text-align: center; color: #6a7c70; margin-top: 12px; }
+.race-countdown { position: absolute; inset: 30% 0 auto; font: 800 84px 'Segoe UI', system-ui, sans-serif; text-align: center; color: #356247; text-shadow: 0 2px 12px #fff; }
+.race-result { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); padding: 14px 22px; background: #fffef6ed; border: 1px solid #cbbd81; border-radius: 10px; font-size: 18px; font-weight: 700; max-width: 90%; text-align: center; }
+.watching { position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; font-size: 13px; background: #ffffffde; border-radius: 9px; padding: 6px 12px; pointer-events: auto; white-space: nowrap; }
+.watching button { padding: 5px 9px; }
+.online-room #score-display { display: none; }
+
+@media (max-width: 700px) {
+  .online-panel { left: 12px; top: 12px; width: min(310px, calc(100% - 24px)); padding: 12px; }
+  .online-header h1 { font-size: 18px; }
+  .online-header p { font-size: 11px; }
+  .live-board { top: auto; bottom: 116px; left: 12px; right: 12px; width: auto; padding: 8px; }
+  .live-board header { margin-bottom: 6px; }
+  .live-board h2 { font-size: 12px; }
+  .rank-rows { display: flex; gap: 4px; }
+  .rank-row { flex: 1; min-width: 0; min-height: 62px; padding: 5px 3px; flex-direction: column; gap: 2px; text-align: center; border-left-width: 0; border-top: 3px solid var(--lane-color, #c5d0c7); }
+  .place { font-size: 13px; min-width: auto; }
+  .runner-info { width: 100%; flex: 0; }
+  .runner-info strong { font-size: 10px; }
+  .runner-info small, .board-hint { display: none; }
+  .runner-score { font-size: 10px; }
+  .empty-slot { font-size: 8px; line-height: 1.3; justify-content: center; }
+  .watching { bottom: 226px; font-size: 11px; max-width: calc(100% - 24px); }
+  .race-result { top: max(310px, 35%); font-size: 14px; width: max-content; }
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #f7f7f7;
+  font-family: 'Press Start 2P', monospace, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+/* HUD Overlay */
+#hud-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Score Display in Top-Right */
+#score-display {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  font-size: 14px;
+  color: #535353;
+  letter-spacing: 2px;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+#score-display .hi-score {
+  opacity: 0.65;
+  margin-right: 12px;
+}
+
+/* Center prompts (Idle, Game Over, Paused) */
+.center-prompt {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+#idle-prompt p {
+  font-size: 11px;
+  color: #535353;
+  letter-spacing: 2px;
+  animation: pulse-blink 1.4s infinite;
+}
+
+#idle-prompt {
+  top: 25%;
+  width: 90%;
+}
+
+@keyframes pulse-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Game Over Screen */
+.game-over-text {
+  font-size: 16px;
+  color: #535353;
+  letter-spacing: 5px;
+}
+
+.restart-button {
+  background: none;
+  border: none;
+  color: #535353;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform 0.15s ease, color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.restart-button:hover {
+  transform: scale(1.15) rotate(15deg);
+  color: #202124;
+}
+
+.restart-button:active {
+  transform: scale(0.95);
+}
+
+/* Paused */
+#paused-box p {
+  font-size: 16px;
+  color: #535353;
+  letter-spacing: 4px;
+}
+
+/* Camera Switch Button */
+.hud-tool-btn {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 10px;
+  color: #535353;
+  cursor: pointer;
+  pointer-events: auto;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 10;
+}
+
+.hud-tool-btn:hover {
+  background-color: #ffffff;
+  transform: translateY(-2px);
+  color: #111111;
+}
+
+/* Dinosaur Selector Panel */
+.model-credits {
+  position: absolute;
+  bottom: 62px;
+  left: 20px;
+  color: #666;
+  font: 12px sans-serif;
+  pointer-events: auto;
+}
+
+.dino-selector-panel {
+  position: absolute;
+  bottom: 18px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 6px 12px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.selector-label {
+  font-size: 8px;
+  color: #636e72;
+  letter-spacing: 1px;
+}
+
+.dino-btn-group {
+  display: flex;
+  gap: 6px;
+}
+
+.dino-select-btn {
+  background: #f1f2f6;
+  border: 1px solid #ced6e0;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 9px;
+  color: #2f3542;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.dino-select-btn:hover {
+  background: #ffffff;
+  border-color: #2ed573;
+  transform: translateY(-2px);
+}
+
+.dino-select-btn.active {
+  background: #2f3542;
+  color: #ffffff;
+  border-color: #1e272e;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .model-credits { bottom: 108px; left: 12px; }
+  .dino-selector-panel {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 6px 8px;
+  }
+  .selector-label {
+    display: none;
+  }
+  .dino-name {
+    display: none;
+  }
+  .hud-tool-btn {
+    bottom: 60px;
+    left: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  #score-display {
+    top: 16px;
+    right: 16px;
+    font-size: 11px;
+  }
+  .game-over-text {
+    font-size: 13px;
+  }
+  #idle-prompt p {
+    font-size: 9px;
+  }
+}
